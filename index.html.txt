@@ -1,0 +1,409 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+void main() {
+  runApp(const BTOSApp());
+}
+
+class BTOSApp extends StatelessWidget {
+  const BTOSApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'BTOS - Bindu Teacher Online School',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.grey[100],
+      ),
+      home: const BTOSRegistrationScreen(),
+    );
+  }
+}
+
+// ==========================================
+// 1. REGISTRATION SCREEN (Multi-Child & Photos)
+// ==========================================
+class BTOSRegistrationScreen extends StatefulWidget {
+  const BTOSRegistrationScreen({Key? key}) : super(key: key);
+
+  @override
+  _BTOSRegistrationScreenState createState() => _BTOSRegistrationScreenState();
+}
+
+class _BTOSRegistrationScreenState extends State<BTOSRegistrationScreen> {
+  final _formKey = GlobalKey<FormState>();
+  
+  String? selectedDistrict;
+  int selectedChildrenCount = 1; 
+
+  // දරුවන්ගේ දත්ත තබාගැනීමට List එකක් (නම, ශ්‍රේණිය, ඡායාරූපය)
+  final List<Map<String, dynamic>> _childrenData = [
+    {'nameController': TextEditingController(), 'grade': 1, 'imageFile': null}
+  ];
+
+  final List<String> districts = [
+    'Anuradhapura', 'Colombo', 'Gampaha', 'Kandy', 'Galle', 'Kurunegala', 'Ratnapura', 'Matale', 'Jaffna'
+  ];
+
+  // ඡායාරූපයක් ලබාගැනීම සඳහා Function එක (Camera හෝ Gallery)
+  Future<void> _pickImage(int index, ImageSource source) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _childrenData[index]['imageFile'] = File(pickedFile.path);
+      });
+    }
+  }
+
+  // දරුවන්ගේ ගණන වෙනස් වන විට List එක Update කිරීම
+  void _updateChildrenCount(int count) {
+    setState(() {
+      selectedChildrenCount = count;
+      if (_childrenData.length < count) {
+        for (int i = _childrenData.length; i < count; i++) {
+          _childrenData.add({
+            'nameController': TextEditingController(),
+            'grade': 1,
+            'imageFile': null,
+          });
+        }
+      } else if (_childrenData.length > count) {
+        _childrenData.removeRange(count, _childrenData.length);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("BTOS - Student Registration", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.lightBlue,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: Cross.stretch,
+            children: [
+              const Text(
+                "ආයුබෝවන්! කරුණාකර ඔබගේ ගිණුම සක්‍රීය කරන්න.",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              
+              // WhatsApp Number Field
+              TextFormField(
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: "WhatsApp Number",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone),
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              // District Dropdown
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: "District (දිස්ත්‍රික්කය)", border: OutlineInputBorder()),
+                value: selectedDistrict,
+                items: districts.map((district) {
+                  return DropdownMenuItem(value: district, child: Text(district));
+                }).toList(),
+                onChanged: (val) => setState(() => selectedDistrict = val),
+              ),
+              const SizedBox(height: 20),
+
+              // Number of Children Dropdown (1 to 5)
+              DropdownButtonFormField<int>(
+                decoration: const InputDecoration(
+                  labelText: "ඉගෙන ගන්නා දරුවන් ප්‍රමාණය (Number of Children)", 
+                  border: OutlineInputBorder(),
+                ),
+                value: selectedChildrenCount,
+                items: [1, 2, 3, 4, 5].map((count) {
+                  return DropdownMenuItem(value: count, child: Text("$count දරුවන් (Children)"));
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) _updateChildrenCount(val);
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Dynamic Children Forms
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: selectedChildrenCount,
+                itemBuilder: (context, index) {
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    elevation: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("දරුවා ${index + 1} විස්තර (Child ${index + 1})", 
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 16)),
+                          const SizedBox(height: 10),
+                          
+                          // Child Name
+                          TextFormField(
+                            controller: _childrenData[index]['nameController'],
+                            decoration: InputDecoration(
+                              labelText: "දරුවා ${index + 1} ගේ නම", 
+                              border: const OutlineInputBorder()
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Grade Selection (Grade 1 to 5)
+                          DropdownButtonFormField<int>(
+                            decoration: const InputDecoration(labelText: "ශ්‍රේණිය (Grade 1 - 5)", border: OutlineInputBorder()),
+                            value: _childrenData[index]['grade'],
+                            items: [1, 2, 3, 4, 5].map((g) => DropdownMenuItem(value: g, child: Text("Grade $g"))).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _childrenData[index]['grade'] = val;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Profile Photo Display & Upload Options
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Colors.grey[300],
+                                backgroundImage: _childrenData[index]['imageFile'] != null
+                                    ? FileImage(_childrenData[index]['imageFile'])
+                                    : null,
+                                child: _childrenData[index]['imageFile'] == null
+                                    ? const Icon(Icons.person, size: 30, color: Colors.grey)
+                                    : null,
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                                      onPressed: () => _pickImage(index, ImageSource.camera),
+                                      icon: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                                      label: const Text("කැමරාවෙන් Photo එකක් ගන්න", style: TextStyle(color: Colors.white, fontSize: 12)),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    OutlinedButton.icon(
+                                      onPressed: () => _pickImage(index, ImageSource.gallery),
+                                      icon: const Icon(Icons.photo_library, size: 18),
+                                      label: const Text("ගැලරියෙන් Photo එකක් දාන්න", style: TextStyle(fontSize: 12)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Activate Button
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.lightBlue,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                ),
+                onPressed: () {
+                  // Dashboard වෙත යොමු කිරීම
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const BTOSDashboardScreen()),
+                  );
+                },
+                child: const Text("Activate Account & Login", style: TextStyle(fontSize: 18, color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// 2. STUDENT DASHBOARD & CLASS DETAILS
+// ==========================================
+class BTOSDashboardScreen extends StatefulWidget {
+  const BTOSDashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  _BTOSDashboardScreenState createState() => _BTOSDashboardScreenState();
+}
+
+class _BTOSDashboardScreenState extends State<BTOSDashboardScreen> {
+  String? selectedMonth;
+  String? selectedYear;
+
+  final List<String> months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  final List<String> years = ['2026', '2027'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("BTOS - Bindu Teacher Online School"),
+        backgroundColor: Colors.lightBlue,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {},
+          )
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: Cross.start,
+          children: [
+            // 🔴 Live Class Join Banner Button[span_0](start_span)[span_0](end_span)
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.red[600],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextButton.icon(
+                onPressed: () {
+                  // ඇප් එක ඇතුළෙන්ම Live Class Stream වෙත සම්බන්ධ වීම[span_1](start_span)[span_1](end_span)
+                },
+                icon: const Icon(Icons.live_tv, color: Colors.white, size: 30),
+                label: const Text(
+                  "🔴 CLICK TO JOIN LIVE CLASS!",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Subscribed Status Banner
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text("Subscribed - Grade Active", 
+                textAlign: TextAlign.center, 
+                style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            const SizedBox(height: 20),
+
+            // 🤖 AI Lessons Video Category Section
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: Cross.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.smart_display, color: Colors.purple, size: 28),
+                        SizedBox(width: 8),
+                        Text("🤖 AI පාඩම් වීඩියෝ (AI Video Lessons)", 
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.purple)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ListTile(
+                      title: const Text("පරිසරය - 1 ශ්‍රේණිය (AI Animation Lesson)"),
+                      subtitle: const Text("Grade 1 | Interactive Learning"),
+                      trailing: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+                        onPressed: () {},
+                        child: const Text("Watch", style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Recordings Section (Month & Year Dropdowns)[span_2](start_span)[span_2](end_span)
+            ExpansionTile(
+              leading: const Icon(Icons.videocam, color: Colors.blue),
+              title: const Text("Recordings (පසුගිය වීඩියෝ පාඩම්)", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(labelText: "Month", border: OutlineInputBorder()),
+                          value: selectedMonth,
+                          items: months.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                          onChanged: (val) => setState(() => selectedMonth = val),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(labelText: "Year", border: OutlineInputBorder()),
+                          value: selectedYear,
+                          items: years.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
+                          onChanged: (val) => setState(() => selectedYear = val),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Text("Select both to load recordings", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                ),
+              ],
+            ),
+            const Divider(),
+
+            // Tutes & Worksheets Section[span_3](start_span)[span_3](end_span)
+            ExpansionTile(
+              leading: const Icon(Icons.menu_book, color: Colors.blue),
+              title: const Text("Tutes & Worksheets (නිබන්ධන)", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              children: [
+                Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: ListTile(
+                    leading: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 36),
+                    title: const Text("Tute Number 01 - අභ්‍යාස පත්‍රිකාව"),
+                    subtitle: const Text("Rs. 500.00"),
+                    trailing: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.lightBlue),
+                      onPressed: () {},
+                      child: const Text("Buy", style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
